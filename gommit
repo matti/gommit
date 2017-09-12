@@ -1,0 +1,70 @@
+#!/usr/bin/env sh
+set -e
+
+if [ "$(git ls-files --others --exclude-standard)" != "" ]; then
+  echo "add to index:"
+  git ls-files --others --exclude-standard
+
+  exit 1
+fi
+
+while true; do
+  if [ "$(git diff --cached)" = "" ]; then
+    git add -p
+  fi
+
+  if [ "$(git diff --cached)" = "" ]; then
+    exit 0
+  fi
+
+  echo "
+
+  == GOMMIT =====================================================
+  "
+  git --no-pager diff --cached
+  read
+
+  tag=$(dialog \
+    --backtitle "gommit" \
+    --menu "tag" \
+    17 25 8 \
+    gommit "" chore "" feat "" fix "" maybefix "" docs "" sprölö "" other "" \
+    2>&1 >/dev/tty)
+
+  if [ "$tag" = "gommit" ]; then
+    git commit -m "gommit"
+  else
+    if [ "$tag" = "other" ]; then
+      tag=$(dialog \
+        --backtitle "gommit" \
+        --inputbox "wat?" \
+        10 80 \
+        2>&1 >/dev/tty)
+    fi
+
+    component=$(dialog \
+      --backtitle "gommit" \
+      --inputbox "$tag (" \
+      10 80 \
+      2>&1 >/dev/tty)
+
+    message=$(dialog \
+      --backtitle "gommit" \
+      --inputbox "$tag ($component) " \
+      10 80 \
+      2>&1 >/dev/tty)
+
+    git commit -m "$tag ($component) $message"
+  fi
+
+  set +e
+    git diff-index --quiet HEAD
+    dirty=$?
+  set -e
+
+  if [ "$dirty" = "0" ]; then
+    break
+  fi
+done
+
+git push
